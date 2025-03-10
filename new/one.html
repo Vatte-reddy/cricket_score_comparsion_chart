@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cricket Score Comparison Chart</title>
+
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    h2 {
+      color: #333;
+    }
+    .chart-container {
+      width: 90%;
+      margin: 20px auto;
+    }
+    .input-container {
+      margin: 10px;
+    }
+    .input-container label {
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    .input-container button {
+      margin: 10px;
+      padding: 8px 12px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .input-container button:hover {
+      background-color: #45a049;
+    }
+    canvas {
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+    .summary {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .summary p {
+      display: inline-block;
+      margin: 0 20px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Cricket Score Comparison Chart</h2>
+
+<div class="input-container">
+  <label>Over: <input type="number" id="over" min="1"></label>
+  <label>Team 1 Runs: <input type="number" id="team1Score" min="0"></label>
+  <label>Team 2 Runs: <input type="number" id="team2Score" min="0"></label>
+  <label>Team 1 Wickets: <input type="number" id="team1Wickets" min="0" max="10"></label>
+  <label>Team 2 Wickets: <input type="number" id="team2Wickets" min="0" max="10"></label>
+  <button onclick="addScore()">Add Score</button>
+  <button onclick="resetChart()">Reset</button>
+</div>
+
+<div class="summary">
+  <p>Team 1 Score: <span id="team1TotalScore">0</span></p>
+  <p>Team 2 Score: <span id="team2TotalScore">0</span></p>
+  <p>Team 1 Run Rate: <span id="team1RunRate">0.00</span></p>
+  <p>Team 2 Run Rate: <span id="team2RunRate">0.00</span></p>
+</div>
+
+<canvas id="scoreChart" width="900" height="500" class="chart-container"></canvas>
+
+<script>
+  let scores = []; // Array to store the scores data
+  let totalRunsTeam1 = 0;
+  let totalRunsTeam2 = 0;
+  let totalOvers = 0;
+  
+  const canvas = document.getElementById("scoreChart");
+  const ctx = canvas.getContext("2d");
+
+  function addScore() {
+    const over = parseInt(document.getElementById("over").value);
+    const team1Score = parseInt(document.getElementById("team1Score").value);
+    const team2Score = parseInt(document.getElementById("team2Score").value);
+    const team1Wickets = parseInt(document.getElementById("team1Wickets").value);
+    const team2Wickets = parseInt(document.getElementById("team2Wickets").value);
+
+    if (over && team1Score >= 0 && team2Score >= 0) {
+      scores[over - 1] = { 
+        over, 
+        team1: { runs: team1Score, wickets: team1Wickets },
+        team2: { runs: team2Score, wickets: team2Wickets }
+      };
+
+      totalRunsTeam1 += team1Score;
+      totalRunsTeam2 += team2Score;
+      totalOvers = over;
+
+      updateRunRates();
+      updateTeamScores();
+      drawChart();
+    } else {
+      alert("Please enter valid data for all fields.");
+    }
+  }
+
+  function resetChart() {
+    scores = [];
+    totalRunsTeam1 = 0;
+    totalRunsTeam2 = 0;
+    totalOvers = 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updateRunRates();
+    updateTeamScores();
+    drawChart(); // Redraw to reset grid
+  }
+
+  function updateRunRates() {
+    const team1RunRate = (totalOvers > 0) ? (totalRunsTeam1 / totalOvers).toFixed(2) : 0.00;
+    const team2RunRate = (totalOvers > 0) ? (totalRunsTeam2 / totalOvers).toFixed(2) : 0.00;
+    document.getElementById("team1RunRate").innerText = team1RunRate;
+    document.getElementById("team2RunRate").innerText = team2RunRate;
+  }
+
+  function updateTeamScores() {
+    document.getElementById("team1TotalScore").innerText = totalRunsTeam1;
+    document.getElementById("team2TotalScore").innerText = totalRunsTeam2;
+  }
+
+  function drawChart() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw grid lines
+    ctx.strokeStyle = "#ddd";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 450; i += 50) {
+      ctx.beginPath();
+      ctx.moveTo(50, i);
+      ctx.lineTo(canvas.width - 50, i);
+      ctx.stroke();
+    }
+
+    // Axis labels
+    ctx.fillStyle = "#000";
+    ctx.font = "12px Arial";
+    ctx.fillText("Runs", 10, 20);
+    ctx.fillText("Overs", canvas.width - 50, canvas.height - 10);
+
+    // Chart settings
+    const barWidth = 20;
+    const gap = 40;
+    const xStart = 60;
+    let x = xStart;
+
+    // Colors
+    const team1Color = "rgba(0, 123, 255, 0.8)";
+    const team2Color = "rgba(220, 53, 69, 0.8)";
+    const wicketColor = "rgba(255, 193, 7, 1)";
+
+    scores.forEach((score, index) => {
+      if (score) {
+        const { team1, team2 } = score;
+
+        // Draw Team 1 bar (Runs scored in that over)
+        ctx.fillStyle = team1Color;
+        ctx.fillRect(x, canvas.height - team1.runs * 10 - 30, barWidth, team1.runs * 10);
+
+        
+        // Draw wickets for Team 1
+        for (let i = 0; i < team1.wickets; i++) {
+          ctx.fillStyle = wicketColor;
+          ctx.beginPath();
+          ctx.arc(x + barWidth / 2, canvas.height - team1.runs * 10 - 40 - i * 15, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Display runs scored by Team 1 above the bar
+        ctx.fillStyle = "#000";
+        ctx.fillText(team1.runs, x + barWidth / 2 - 5, canvas.height - team1.runs * 10 - 40);
+ 
+        // Draw Team 2 bar (Runs scored in that over)
+        ctx.fillStyle = team2Color;
+        ctx.fillRect(x + barWidth + gap / 2, canvas.height - team2.runs * 10 - 30, barWidth, team2.runs * 10);
+
+        
+        
+        // Draw wickets for Team 2
+        for (let i = 0; i < team2.wickets; i++) {
+          ctx.fillStyle = wicketColor;
+          ctx.beginPath();
+          ctx.arc(x + barWidth + gap / 2 + barWidth / 2, canvas.height - team2.runs * 10 - 40 - i * 15, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Display runs scored by Team 2 above the bar
+        ctx.fillStyle = "#000";
+        ctx.fillText(team2.runs, x + barWidth + gap / 2 + barWidth / 2 - 5, canvas.height - team2.runs * 10 - 40);
+
+        // Over labels
+        ctx.fillStyle = "#000";
+        ctx.fillText(`Over ${score.over}`, x + barWidth / 2, canvas.height - 5);
+
+        x += barWidth * 2 + gap;
+      }
+    });
+
+    // Legend
+    ctx.fillStyle = team1Color;
+    ctx.fillRect(canvas.width - 200, 20, 15, 15);
+    ctx.fillStyle = "#000";
+    ctx.fillText("Team 1 Runs", canvas.width - 180, 32);
+
+    ctx.fillStyle = team2Color;
+    ctx.fillRect(canvas.width - 200, 40, 15, 15);
+    ctx.fillStyle = "#000";
+    ctx.fillText("Team 2 Runs", canvas.width - 180, 52);
+
+    ctx.fillStyle = wicketColor;
+    ctx.beginPath();
+    ctx.arc(canvas.width - 193, 70, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillText("Wicket Symbol", canvas.width - 180, 75);
+  }
+</script>
+<script src="./one.js"></script>
+
+</body>
+</html>
